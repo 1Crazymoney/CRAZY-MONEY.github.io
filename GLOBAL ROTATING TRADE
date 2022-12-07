@@ -1,0 +1,80 @@
+globe = {
+  
+  const height = 700
+  const scl = Math.min(width, height)/2.5; // scale globe
+  const tRotation = 30000; //30s per rotation
+  const svg = d3.select(DOM.svg(width, height))
+  
+  // map projection
+  const projection = d3.geoOrthographic()
+      .scale(scl)
+      .translate([ width/2, height/2 ]);
+
+  // path generator
+  const path = d3.geoPath()
+    .projection(projection);
+  
+  // pause button
+  var rotationOn = true;
+  
+  svg.append("text")
+    .attr("x", width/2)
+    .attr("y", height - 10)
+    .text("PAUSE")
+    .attr("text-anchor", "middle")
+    .style("font-family", "sans-serif")
+    .on("mouseover", function() { d3.select(this).style("text-decoration", "underline") })
+    .on("mouseout", function() { d3.select(this).style("text-decoration", "none") })
+    .on("click", function() {
+      rotationOn = !rotationOn;
+      d3.select(this).text(rotationOn ? "PAUSE" : "PLAY")
+    })
+
+  // add circle for background
+  var bgCircle = svg.append("circle")
+                  .attr("cx", width/2)
+                  .attr("cy", height/2)
+                  .attr("r", projection.scale())
+                  .style("fill", "#bfd7e4")
+
+  // create one path per TopoJSON feature
+  svg.append("path")
+    .datum(topojson.feature(world, world.objects.countries))
+    .attr("d", path)
+    .style("fill", "#eaeaea")
+    .style("stroke", "#ccc")
+    .style("stroke-width", "0.3px")
+
+  // vars for timer
+  var tNew, dt, steps, pos, tOld, oldPos;
+  tOld = 0;
+  oldPos = 0;
+
+  // start timer
+  d3.timer(myTimer);
+  
+  // function that rotates the earth
+  function myTimer(now) {
+    if (rotationOn) {
+      tNew = now;
+      dt = tOld - tNew;
+      steps = dt * 360 / tRotation;
+
+      pos = oldPos - steps //the earth rotates towards the east
+
+      if (pos <= -180) {pos = pos+360}
+
+      projection.rotate([pos, 0]);
+      svg.selectAll("path").attr("d", path)
+
+      tOld = tNew;
+      oldPos = pos;
+    }
+    else {
+      tOld = now;
+    }
+  }
+  
+  return svg.node()
+  
+}
